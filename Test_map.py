@@ -1,3 +1,4 @@
+from flask import Blueprint
 import pygame, sys, os
 from MapLoader import*
 from pygame.locals import*
@@ -21,18 +22,38 @@ place = False
 is_moving = False
 left = False
 right = False
+up = False
 jump = False
 gravity = True
-wall = False
 
 jump_force = 20
 speed = 3
+camera_speed = 6
+frame_tree = 0
 
 load_map = Load_Map()
 entity,generated_map,entity_layer,generated_layer,decoration, decoration_num = load_map.Load_File('MapCoordinate.txt',
         'MapSequence.txt', 'layerCoordinate.txt', 'layerSequence.txt','decoration.txt','decorationNum.txt', 36)
 
-def Render_Map(camera):
+class VFX:
+    def __init__(self):
+        pass
+
+    def filter(self,entity,loc,deco_id):
+        coord = []
+        for obj in loc:
+            if entity[loc.index(obj)] == deco_id:
+                coord.append(obj)
+        return coord
+
+def Render_Vfx(camera,frame):
+   coord = VFX().filter(decoration_num,decoration,0)
+   for obj in coord:
+        image = pygame.image.load(os.path.join('vfx', f'tree{int(frame)}.png'))
+        image.set_colorkey((0,0,0))
+        Display.blit(image, (obj.x - spawn_point[0],obj.y - spawn_point[1]))
+
+def Render_Map(camera,frame):
     if decoration:
         for tile in decoration:
             image = pygame.image.load(os.path.join('set2', f'deco{decoration_num[decoration.index(tile)]}.png'))
@@ -41,6 +62,8 @@ def Render_Map(camera):
             tile.y += camera[1]
             decorations.append(Display.blit(image,(tile.x - spawn_point[0],tile.y - spawn_point[1])))
     
+    Render_Vfx(camera,frame)
+
     if entity:
         for tile in entity:
             image = pygame.image.load(os.path.join('set1', f'tile{generated_map[entity.index(tile)]}.png'))
@@ -67,16 +90,15 @@ def Collision(player_dimension):
     return collision
 
 def Player_Movements(player_dimension,movement):
-    global jump,jump_force,wall
+    global jump,jump_force
     player_dimension.x += movement[0]
     collision = Collision(player_dimension)
     for tile in collision:
         if movement[0] > 0:
             player_dimension.right = tile.left
-            wall = True
         if movement[0] < 0:
             player_dimension.left = tile.right
-            wall = True
+
             
     player_dimension.y += movement[1]
     collision = Collision(player_dimension)
@@ -91,18 +113,11 @@ def Player_Movements(player_dimension,movement):
     return player_dimension
 
 def Render_Player(player):
-    pygame.draw.rect(Display, 'blue', player)
+    # pygame.draw.rect(Display, 'blue', player)
+    pass
 
 while 1:
-    Screen.fill('grey')
     Display.fill('black')
-    x,y = pygame.mouse.get_pos()
-    mouse_inputs = pygame.mouse.get_pressed()
-
-    if wall:
-        camera_speed = 0
-    else:
-        camera_speed = 6
 
     movement = [0,0]
     camera = [0,0]
@@ -112,13 +127,19 @@ while 1:
     if right:
         movement[0] += speed
         camera[0] -= camera_speed
-    if jump:
-        movement[1] -= jump_force
-        jump_force -= 3
-    if gravity: 
-        movement[1] += speed
+    if up:
+        camera[1] += camera_speed
 
-    Render_Map(camera)
+    # if jump:
+    #     movement[1] -= jump_force
+    #     jump_force -= 3
+    # if gravity: 
+    #     movement[1] += speed
+        
+    if frame_tree > 8:
+        frame_tree = 0
+    frame_tree += 0.2
+    Render_Map(camera,frame_tree)
     player = Player_Movements(player_dimension,movement)
     Render_Player(player)
 
@@ -129,6 +150,8 @@ while 1:
 
 
         if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_w:
+                up = True
             if event.key == pygame.K_a:
                 left = True
             if event.key == pygame.K_d:
@@ -137,13 +160,13 @@ while 1:
                 jump = True
 
         if event.type == pygame.KEYUP:
+            if event.key == pygame.K_w:
+                up = False
             if event.key == pygame.K_a:
                 left = False
             if event.key == pygame.K_d:
                 right = False
-            if event.key == pygame.K_SPACE:
-                jump = False
-   
+
     surf = pygame.transform.scale(Display,(1000,600))
     Screen.blit(surf, (0, 0))
     pygame.display.update()
