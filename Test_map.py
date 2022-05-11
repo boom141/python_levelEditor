@@ -18,10 +18,15 @@ player_dimension = pygame.Rect(150,100, 10,10)
 
 left = False
 right = False
+jump = False
 
-velocity = 3
+velocity = 4
 y_momentum = 0
 air_timer = 0
+offset = [20,20]
+
+state = 'idle'
+facing = 'left'
 
 last_time = time.time()
 
@@ -30,13 +35,14 @@ entity,generated_map,entity_layer,generated_layer,decoration, decoration_num = l
         'MapSequence.txt', 'layerCoordinate.txt', 'layerSequence.txt','decoration.txt','decorationNum.txt', 36)
 
 vfx = VFX()
+player_animation = Player_Animation()
 
 def Filter(entity,loc,deco_id):
-    attribute = []
+    location = []
     for obj in loc:
         if entity[loc.index(obj)] == deco_id:
-            attribute.append(obj)
-    return attribute
+            location.append(obj)
+    return location
 
 def Render_Vfx(dt):
     tree_loc = Filter(decoration_num,decoration,0)
@@ -55,6 +61,15 @@ def Render_Vfx(dt):
         image.set_colorkey((0,0,0))
         Display.blit(image, (bush.x - spawn_point[0],bush.y - spawn_point[1]))
 
+def Render_Interactive_Items(dt):
+    # items = []
+    droplet_loc = Filter(decoration_num,decoration,8)
+    sprites = VFX().Load_Sprite('vfx', 'water_droplet', 8)
+    frame = vfx.Animate3(0.2,dt,8)
+    for droplet in droplet_loc:
+        image = sprites[int(frame)]
+        Display.blit(image, (droplet.x - spawn_point[0],droplet.y - spawn_point[1]))
+
 def Render_Map(camera,dt):
     tiles = []
     if decoration:
@@ -66,6 +81,7 @@ def Render_Map(camera,dt):
             Display.blit(image,(tile.x - spawn_point[0],tile.y - spawn_point[1]))
     
     Render_Vfx(dt)
+    Render_Interactive_Items(dt)
 
     if entity:
         for tile in entity:
@@ -110,10 +126,23 @@ def Player_Movements(player_dimension,movement,tiles):
     
     return player_dimension, collision_type
 
-def Render_Player(player,camera,dt):
+def Render_Player(player,camera,state,facing,offset,player_action,dt):
+    idle_left = Player_Animation().Load_Sprites('vfx','player_idle_left',11)
+    idle_right = Player_Animation().Load_Sprites('vfx','player_idle_right',11)
+    move_left = Player_Animation().Load_Sprites('vfx','player_L',5)
+    move_right = Player_Animation().Load_Sprites('vfx','player_R',5)
+    jump_left = Player_Animation().Load_Sprites('vfx','player_jump_left',1)
+    jump_right = Player_Animation().Load_Sprites('vfx','player_jump_right',1)
+    
     player.x -= camera[0]
-    player.y -= camera[1]
+    player.y -= camera[1] 
+    current_sprite_list = player_animation.Import_Sprite(jump_left,jump_right,move_left,move_right,idle_left,idle_right,facing,player_action)
+    frame = player_animation.Animate(0.2,len(current_sprite_list),dt)
+    image = current_sprite_list[int(frame)]
+    image.set_colorkey((0,0,0))
     pygame.draw.rect(Display, 'blue', player)
+    Display.blit(image, (player.x - offset[0], player.y - offset[1]))
+
 
 while 1:
     Display.fill('black')
@@ -130,11 +159,20 @@ while 1:
 
     tiles = Render_Map(camera, dt)  
     movement = [0,0]
+    
     if right:
         movement[0] += velocity
+        facing = 'right'
+        offset[0] = 28
     if left:
         movement[0] -= velocity
-    
+        facing = 'left'
+        offset[0] = 20
+    if jump:
+        offset[1] = 15
+    else:
+        offset[1] = 20
+
     movement[1] += y_momentum
     y_momentum += 0.2
     if y_momentum > 3:
@@ -143,12 +181,14 @@ while 1:
     player_dimension, collision_types = Player_Movements(player_dimension,movement,tiles)    
 
     if collision_types['down'] == True:
+       jump = False
        air_timer = 0
        y_momentum = 0
     else:
        air_timer += 1
     
-    Render_Player(player_dimension,camera,dt)
+    player_action = [jump,left,right]
+    Render_Player(player_dimension,camera,state,facing,offset,player_action,dt)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit
@@ -160,6 +200,7 @@ while 1:
             if event.key == pygame.K_d:
                 right = True
             if event.key == pygame.K_SPACE:
+                jump = True
                 if air_timer < 6:
                     y_momentum = -5
                 
