@@ -5,6 +5,12 @@ pygame.init()
 Window = pygame.display.set_mode((400,300))
 Fps = pygame.time.Clock()
 
+class Particle_system:
+    def __init__(self):
+        pass
+    def Disperse(self):
+        return [[200, 150], [random.randrange(-3,3),random.randrange(-10,10)], random.randint(4, 6)]
+
 particles = []
 while 1:
     Window.fill('black')
@@ -27,7 +33,7 @@ while 1:
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_t:
                 for i in range(20):
-                    particles.append([[200, 150], [random.randrange(-3,3),random.randrange(-10,10)], random.randint(4, 6)])
+                    particles.append(Particle_system().Disperse())
                     
 
     pygame.display.update()
